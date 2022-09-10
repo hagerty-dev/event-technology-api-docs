@@ -1,0 +1,827 @@
+openapi: 3.0.3
+info:
+  description: "Draft design document for new MSR REST API to support the funnel redesign and replatform illustrating RESTful design appropriate for 3rd party consumption.\n\nSee HTTP status codes at: https://i.stack.imgur.com/s0JJB.jpg"
+  version: "0.1"
+  title: Eclipse REST API
+  contact:
+    email: api@motorsportreg.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+tags:
+  - name: profiles
+    description: An individual or organization (party)
+  - name: contacts
+    description: A profile who belongs to an organization
+  - name: organizations
+    description: A club, racetrack or sanctioning body who has contacts and organizes events
+  - name: events
+    description: An event hosted by an organization
+  - name: registrations
+    description: A contact entered into an event
+ 
+paths:
+  /profiles/{profile_id}:
+    get:
+      summary: Get a profile
+      tags:
+        - profiles
+      parameters:
+        - $ref: '#/components/parameters/profile_id'
+      responses:
+        "200":
+          description: Return profile
+    patch:
+      summary: Partially update a profile 
+      tags:
+        - profiles
+      parameters:
+        - $ref: '#/components/parameters/profile_id'
+      requestBody:
+        description: Update profile with properties to be changed (e.g. could update photo only)
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/ProfileProperties'
+                - type: object
+                  properties:
+                    Segment:
+                      nullable: true
+      responses:
+        "204":
+          description: Updated
+          
+  /profiles/{profile_id}/relationships:
+    get:
+      summary: List and search profile relationships
+      tags:
+        - profiles
+      parameters:
+        - $ref: '#/components/parameters/profile_id'
+      responses:
+        "200":
+          description: Return party relationships for this profile
+      
+  /contacts:
+    get:
+      summary: List and search contacts 
+      tags:
+        - contacts
+      responses:
+        "200":
+          description: Return contacts
+    post:
+      summary: Create contact
+      tags: 
+        - contacts
+      responses:
+        "201":
+          description: Contact updated
+        "301": 
+          description: Contact already exists for this profile and can be found at the location header uri
+
+  /contacts/{contact_id}:
+    get:
+      summary: Get a contact
+      tags:
+        - contacts
+      parameters:
+        - $ref: '#/components/parameters/contact_id'
+      responses:
+        "200":
+          description: Return contact
+    put:
+      summary: Update contact
+      tags: 
+        - contacts
+      parameters:
+        - $ref: '#/components/parameters/contact_id'
+      responses:
+        "200":
+          description: Contact updated
+    patch:
+      summary: Update contact with 
+      tags:
+        - contacts
+      parameters:
+        - $ref: '#/components/parameters/contact_id'
+      requestBody:
+        description: Update contact with properties to be changed
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/ContactProperties'
+                - type: object
+                  properties:
+                    Segment:
+                      nullable: true
+      responses:
+        "204":
+          description: Updated
+      
+       
+
+
+  /events/{event_id}/registrations:
+    get:
+      tags:
+        - registrations
+      summary: List and search registrations for an event
+      parameters:
+        - $ref: '#/components/parameters/event_id'
+      responses:
+        "200":
+          description: Return 0-n registrations for an event
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Registration"      
+    post:
+      tags:
+        - registrations
+      summary: Add a new registration
+      description: "A registration requires a valid event and contact"
+      parameters:
+        - $ref: '#/components/parameters/event_id'
+      requestBody:
+        $ref: "#/components/requestBodies/Registration"
+      responses:
+        "201":
+          description: Registration created
+        "301": 
+          description: Registration for this contact already exists and can be found here
+        "400":
+          description: Event or Contact prerequisites not satisfied 
+          content:
+            application/json:
+              # see https://stackoverflow.com/questions/47447403/how-to-define-different-responses-for-same-http-status-code-in-openapi-swagger for example of multiple examples
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ContactRecordInvalid'
+        "405":
+          description: Invalid input
+
+  /registrations/{registration_id}:
+    get:
+      tags:
+        - registrations
+      summary: Get registration
+      parameters:
+        - $ref: '#/components/parameters/registration_id'
+      responses:
+        "200":
+          description: Return 1 registration for an event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Registration"      
+    put:
+      tags:
+        - registrations
+      summary: Update an existing registration
+      description: ""
+      parameters:
+        - $ref: '#/components/parameters/registration_id'
+      requestBody:
+        $ref: "#/components/requestBodies/Registration"
+      responses:
+        "200": 
+          description: Registration updated
+        "400":
+          description: Validation exception
+        "404":
+          description: Registration not found
+
+  /organizations:
+    get:
+      tags:
+        - organizations
+      summary: List and search organizations
+      responses:
+        "200":
+          description: Return 0-n organizations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Organization"
+
+
+  /organizations/{organization_id}:
+    get:
+      tags:
+        - organizations
+      summary: Get organization
+      parameters:
+        - $ref: '#/components/parameters/organization_id'
+      responses:
+        "200":
+          description: Return organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+
+
+  /organizations/{organization_id}/roles:
+    get:
+      tags:
+        - organizations
+      summary: Get available roles of an organization
+      parameters:
+        - $ref: '#/components/parameters/organization_id'
+      responses:
+        "200":
+          description: Return array of roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RoleType"      
+
+
+  /events/{event_id}:
+    get:
+      tags:
+        - events
+      summary: Get event
+      parameters:
+        - $ref: '#/components/parameters/event_id'
+      responses:
+        "200":
+          description: Return event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+
+  
+components:
+
+  requestBodies:
+    Registration:
+      content: 
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Registration"
+      required: true
+    Profile:
+      content: 
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Profile"
+      required: true
+    Contact:
+      content: 
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Contact"
+      required: true
+      
+
+  schemas:
+
+    Organization:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/cfuuid'
+        parent:
+          $ref: '#/components/schemas/cfuuid'
+        parent_root:
+          $ref: '#/components/schemas/cfuuid'
+        full_name:
+          type: string
+          description: The full name of the organization, e.g. "BMW CCA - Golden Gate Chapter - Autocross"
+        name: 
+          description: The specific entity name in a hierarchical organization, e.g. "Golden Gate Chapter" or "Autocross"
+        deleted_at:
+          type: string
+          format: date-time
+        # TODO: this needs thoughts; how are plans and feature flags related? How do we want to expose? Feature flags may be limited to our API calls via security roles so we might not have to worry about nailing this on day 1
+        features: 
+          type: array
+          description: Array of enabled features
+ 
+
+    Event:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/cfuuid'
+        organization:
+          $ref: '#/components/schemas/cfuuid'
+        venue:
+          $ref: '#/components/schemas/cfuuid'
+        name:
+          type: string
+          example: Our Big Summer Event
+        start:
+          type: string
+          format: date-time
+        end: 
+          type: string
+          format: date-time
+        duration:
+          type: string
+          example: P3D
+          description: iso 8601 duration
+        media: 
+          type: object
+          properties:
+            images:
+              type: object
+              properties:
+                standard:
+                  type: string
+                  format: uri
+                  example: https://dl.motorsportreg.com/...
+                  description: standard hero image
+        visible:
+          type: boolean
+          default: false
+        attendance_mode:
+          type: string
+          enum:
+            - offline
+            - online
+            - mixed
+        status:
+          type: string
+          enum: 
+            - scheduled
+            - suspended
+            - cancelled
+        url:
+          type: string
+          format: uri
+          example: https://dl.motorsportreg.com/...
+        disciplines:
+          type: array
+          items:
+            $ref: '#/components/schemas/cfuuid'
+        # TODO: are we going to call them segments? eventparts? subevents? lists? See https://www.pivotaltracker.com/n/projects/1925093/stories/104632816
+        segments:
+          type: array
+          items:
+             type: object
+             properties:
+               id: 
+                 $ref: '#/components/schemas/cfuuid'
+               name:
+                 type: string
+                 example: "Saturday"
+               disciplines:
+                 type: array
+                 items:
+                   $ref: '#/components/schemas/cfuuid'
+               venues:
+                 type: array
+                 items:
+                   $ref: '#/components/schemas/cfuuid'
+               start:
+                 type: string
+                 format: date-time
+               end:
+                 type: string
+                 format: date-time
+        registration: 
+          type: object
+          properties:
+            start:
+              type: string
+              format: date-time
+            end:
+              type: string
+              format: date-time
+        created_at:
+          type: string
+          format: date-time
+        published_at:
+          type: string
+          format: date-time
+        cancelled_at:
+          type: string
+          format: date-time
+        # TODO: this needs thoughts; how are plans and feature flags related? How do we want to expose? Feature flags may be limited to our API calls via security roles so we might not have to worry about nailing this on day 1
+        features: 
+          type: array
+          description: Array of enabled features
+  
+  
+      # composing Profile and ProfileUpdate allows us to support required fields for PUT/POST operations and any field for PATCH without repeating our config, see: https://stoplight.io/blog/reuse-openapi-descriptions/
+    Profile:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/ProfileProperties"
+        - required:
+          - email
+
+    ProfileUpdate:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ProfileProperties'
+
+    ProfileProperties:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/cfuuid'
+        first_name:
+          type: string
+        rest_of_name:
+          type: string
+          description: Everything other than the first name (more i18n appropriate)
+        photo:
+          type: string
+          format: url
+        # TODO: make communication methods an array that will always be one item for now, but prepare to support > 1 future? That way we also can have a per-email or per-phone verified timestamp, start/end dates to provide history and more control.
+        email:            
+          type: string
+          format: email
+        email_verified_at:
+          type: string
+          format: date-time
+          description: When email address was verified by e.g. clicking a link
+        mobile_phone:
+          type: string
+          description: mobile phone where text messages can be received
+        mobile_phone_verified_at:
+          type: string
+          format: date-time
+          description: When mobile number was verified by e.g. entering 6-digit MFA code
+        # mocking this up as an array of addresses
+        addresses:
+          type: array
+          description: 0-n mailing addresses
+        status:
+          $ref: '#/components/schemas/ProfileStatus'
+        parent:
+          $ref: '#/components/schemas/cfuuid'
+          
+          
+    # composition is for DRY; see https://stoplight.io/blog/reuse-openapi-descriptions/
+    Contact:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/ContactProperties"
+        - required:
+          - profile
+          - organization
+
+    ContactUpdate:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ContactProperties'
+
+    ContactProperties:
+      type: object
+      required:
+        - profile
+        - organization
+      properties:
+        profile:
+          $ref: '#/components/schemas/cfuuid'
+        organization:
+          $ref: '#/components/schemas/cfuuid'
+        membership:
+          $ref: '#/components/schemas/Membership'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/RegistrationStatus'
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuestionAnswer"
+      
+    Registration:
+      type: object
+      required:
+        - contact
+        - event
+      properties:
+        id:
+          $ref: '#/components/schemas/cfuuid'
+        contact:
+          $ref: '#/components/schemas/cfuuid'
+        event:
+          $ref: '#/components/schemas/cfuuid'
+        status:
+          $ref: '#/components/schemas/RegistrationStatus'
+        paid_in_full:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        registered_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        cancelled_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time
+        metadata:
+          type: string
+          format: json
+
+
+    ContactRecordInvalid:
+      type: object
+      properties:
+        message: 
+          type: string
+        code:
+          type: string
+        required_questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Question'
+            
+
+    Question:
+      type: object
+      required:
+        - type
+        - label
+      properties:
+        id: 
+          $ref: '#/components/schemas/cfuuid'
+        type:
+          type: string
+          enum:
+            - boolean
+            - date
+            - text
+            - currency
+            - integer
+            - essay
+            - likert_scale
+            - file_upload
+            - image_upload
+          example: text
+        label: 
+          type: string
+          description: What end users see as the label for this question
+          example: What are your two favorite marques?
+        header:
+          type: string
+          description: An alternative human-readable label for the field that event organizers and reports see; often shorter or abbreviated 
+          example: Favorite Marques
+        help:
+          type: string
+          description: Optional context-sensitive help text to aid the user in providing a valid answer
+        required:
+          type: boolean
+          default: false
+          description: If a response to this question is required
+        options: 
+          type: array
+          description: If provided, the answer must be one of the listed values
+          example: ["Porsche", "Ferrari", "BMW", "Chevy", "Aston Martin"]
+        allow_multiple:
+          type: boolean
+          default: false
+          example: true
+          description: If options exist and true, allow choosing more than one from {options}
+        max_answers:
+          type: integer
+          default: 1
+          example: 2
+          description: If options exist and allow_multiple is true, limit to this number from {options}
+        max_length:
+          type: integer
+          default: 64000
+          description: The maximum length allowed for a text answer
+        order_by:
+           type: integer
+           description: The display order in an array of questions
+           
+    QuestionAnswer:
+      type: object
+      required:
+        - question
+      properties:
+        id: 
+          $ref: '#/components/schemas/cfuuid'
+        question:
+          $ref: '#/components/schemas/Question'
+        value:
+          $ref: '#/components/schemas/QuestionAnswerValue'
+    
+
+    QuestionAnswerValue:
+      type: string
+      oneOf:
+        - type: boolean
+          description: yes/no
+        - type: string
+          format: date
+          description: date 
+        - type: string
+          description: short or long text answer
+        - type: number
+          format: regex
+          description: amount in the smallest currency unit (e.g. 100 cents to charge $1.00 or 100 to charge ¥100, a zero-decimal currency). See https://stripe.com/docs/currencies#zero-decimal for more rationale.
+          pattern: "^-?[1-9][0-9]{0,7}"
+        - type: string
+          description: file/image upload url
+          format: regex
+          pattern: "^(http://|https://)([^ '\"]*)$"
+        - type: integer
+          description: integer
+          format: int32
+          maximum: 2147483647
+        - type: integer
+          format: int32
+          description: likert scale
+          minimum: 1
+          maximum: 5      
+      example: "Porsche, BMW"     # TODO: should we return this as an array of answers where it's almost always a single-value array? A comma-delimited list is not the most programmatically friendly answer, although it does match what we wind up displaying to the user and outputting in reports?
+          
+
+    guid:
+      type: string
+      pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      example: '00000000-0000-0000-0000-000000000000'
+      # the regex above limits the length;
+      # however, some tools might require explicit settings:
+      minLength: 36
+      maxLength: 36
+
+    cfuuid:
+      type: string
+      description: Adobe UUID follows a 35-character format different from other languages
+      pattern: '^[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{16}$'
+      example: '00000000-0000-0000-0000000000000000'
+      # the regex above limits the length;
+      # however, some tools might require explicit settings:
+      minLength: 35
+      maxLength: 35
+      
+    Membership:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/MemberNumber'
+        region_of_record:
+          $ref: '#/components/schemas/cfuuid'
+        created_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+
+    MemberNumber:
+      type: string
+      description: An external identifier or surrogate key used to represent membership in an organization
+      example: 'A12345'
+      # the regex above limits the length;
+      # however, some tools might require explicit settings:
+      maxLength: 25
+    
+           
+    RoleType:
+      type: object
+      required:
+        - question
+      properties:
+        id: 
+          $ref: '#/components/schemas/guid'
+        parent: 
+          $ref: '#/components/schemas/guid'
+        organization:
+          $ref: '#/components/schemas/cfuuid'
+        name:
+          type: string
+          example: Volunteer
+        description:
+          type: string
+        user_read:
+          type: boolean
+          default: true
+        user_write:
+          type: boolean
+          default: true
+        user_default:
+          type: boolean
+          default: false
+        created_at:
+          type: string
+          format: date-time
+        deleted_at:
+          type: string
+          format: date-time          
+        order_by:
+           type: integer
+        
+    
+    RegistrationStatus:
+      type: string
+      description: registration status in the event
+      example: new
+      enum:
+        - incomplete
+        - checked_in
+        - confirmed
+        - new
+        - on_hold
+        - waitlisted_new
+        - waitlisted_confirmed
+        - cancelled
+        - no_show
+        - declined
+        - deleted
+      default: new
+      
+    ContactStatus:
+      type: string
+      description: contact status in the organization; TODO- this should be refactored at the API level to reflect the semantics and not expose the implementation (e.g., `inactive` should not be the email opt-in/out; `approved` and `expired` should not be about membership which is instead modeled by credentials)
+      example: new
+      enum:
+        - approved
+        - new
+        - on hold
+        - expired
+        - inactive
+        - blacklisted
+        - deleted
+      default: new
+
+
+    ProfileStatus:
+      type: string
+      description: profile status on the platform; note this is required but is not otherwise used today.
+      example: active
+      enum:
+        - active
+        - unconfirmed
+        - deleted
+      default: active
+      
+      
+  parameters:
+    profile_id:
+      in: path
+      name: profile_id
+      description: UUID for profile
+      required: true
+      schema:
+        $ref: '#/components/schemas/cfuuid'  
+    contact_id:
+      in: path
+      name: contact_id
+      description: UUID for contact
+      required: true
+      schema:
+        $ref: '#/components/schemas/cfuuid'
+    event_id:
+      in: path
+      name: event_id
+      description: UUID for event
+      required: true
+      schema:
+        $ref: '#/components/schemas/cfuuid'
+    registration_id:
+      in: path
+      name: registration_id
+      description: UUID for registration
+      required: true
+      schema:
+        $ref: '#/components/schemas/cfuuid'        
+    organization_id:
+      in: path
+      name: organization_id
+      description: UUID for organization
+      required: true
+      schema:
+        $ref: '#/components/schemas/cfuuid'        
+                
+        
+        
+      
+
+externalDocs:
+  description: Learn more about our API
+  url: http://api.motorsportreg.com
+servers:
+  - url: https://api.motorsportreg.com/v2        
